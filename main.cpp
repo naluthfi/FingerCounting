@@ -78,15 +78,20 @@ int main(int argc, const char** argv)
         // Copy source image to foreground image only in area with white mask
         croppedImage.copyTo(fgImg, fgMask);
 
+        Mat coba, coba2;
+        erode(fgMask,coba, 0, Point(-1, -1), 2, 1, 1);
+        dilate(coba,coba2, 0, Point(-1, -1), 2, 1, 1);
+
+
         //Get background image
         bg_model->getBackgroundImage(bgImg);
 
         // Show the results
-        imshow("foreground mask", fgMask);
-        imshow("foreground image", fgImg);
+
+        imshow("coba", coba2);
 
         Mat Temp, img;
-		fgMask.convertTo(Temp, CV_8UC1);
+		coba2.convertTo(Temp, CV_8UC1);
 		bilateralFilter(Temp, img, 5, 20, 20);
 		vector<vector<Point> > contours;
 		vector<Vec4i> hier;
@@ -117,23 +122,67 @@ int main(int argc, const char** argv)
             }
 
             // Draw largest contors
-            Mat3b contour(fgMask.rows, fgMask.cols, Vec3b(0, 0, 0));
-            drawContours(contour, contours, largest_contour_index, Scalar(255, 255, 255), CV_FILLED);
+            Mat3b contour(coba2.rows, coba2.cols, Vec3b(0, 0, 0));
+            drawContours(contour, contours, largest_contour_index, Scalar(255, 255, 255), 2, 8, hier);
 
             // Find convex hull of largest contour
-            vector<Point>hull;
-            convexHull(contours[largest_contour_index], hull, CV_CLOCKWISE, true);
+            vector<Point>hulll;
+            convexHull(contours[largest_contour_index], hulll, CV_CLOCKWISE, true);
 
             // Draw the convex hull
             vector<vector<Point> > tmp;
-            tmp.push_back(hull);
-            drawContours(contour, tmp, 0, Scalar(0, 0, 255), 3);
+            tmp.push_back(hulll);
+            //drawContours(contour, tmp, 0, Scalar(0, 0, 255), 3);
+
+            //give point
+        //convex hulls
+        vector<vector<Point> >hull(contours.size());
+        vector<vector<int> > hullsI(contours.size()); 
+        vector<vector<Vec4i> > defects(contours.size());
+        for (int i = 0; i < contours.size(); i++)
+        {
+            convexHull(contours[i], hull[i], false);
+            convexHull(contours[i], hullsI[i], false); 
+            if(hullsI[i].size() > 3 )            
+            {
+                convexityDefects(contours[i], hullsI[i], defects[i]);
+            }
+        }
+        //REQUIRED contour is detected,then convex hell is found and also convexity defects are found and stored in defects
+
+        if (largest_area>100){
+            drawContours(contour, hull, largest_contour_index, Scalar(255, 0, 255), 3, 8, vector<Vec4i>(), 0, Point());
+
+            /// Draw convexityDefects
+            for(int j=0; j<defects[largest_contour_index].size(); ++j)
+            {
+                const Vec4i& v = defects[largest_contour_index][j];
+                float depth = v[3] / 256;
+                int count=0;
+                if (depth > 10 && depth < 100) //  filter defects by depth
+                {
+                    int startidx = v[0]; Point ptStart(contours[largest_contour_index][startidx]);
+                    int endidx = v[1]; Point ptEnd(contours[largest_contour_index][endidx]);
+                    int faridx = v[2]; Point ptFar(contours[largest_contour_index][faridx]);
+
+                    line(contour, ptStart, ptEnd, Scalar(0, 255, 0), 1);
+                    line(contour, ptStart, ptFar, Scalar(0, 255, 0), 1);
+                    line(contour, ptEnd, ptFar, Scalar(0, 255, 0), 1);
+                    circle(contour, ptFar, 4, Scalar(0, 0, 255), 2);
+                    count++;
+                }
+                printf("ada %d jari \n", count);
+            }
+        }
 
             imshow("Contour", contour);
         }
 
+        
+
 		//print output
 		imshow("Kamera", resized);
+        //ximshow("foreground mask", fgMask);
 		//imshow("TH", thresholdFrame);
     	//imshow("Contour", contourImage);
 
