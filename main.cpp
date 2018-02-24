@@ -29,7 +29,7 @@ int main(int argc, const char** argv)
 	//create a window to present the results
 	namedWindow("Kamera", 1);
 	//namedWindow("BG", 1);
-	namedWindow("TH", 1);
+	//namedWindow("TH", 1);
 
 	//create a loop to capture and find faces
 	while(true)
@@ -71,21 +71,71 @@ int main(int argc, const char** argv)
               
         // threshold mask to saturate at black and white values
         threshold(fgMask, fgMask, 10,255,THRESH_BINARY);
-        // create black foreground image
-               fgImg = Scalar::all(0);
-               // Copy source image to foreground image only in area with white mask
-               croppedImage.copyTo(fgImg, fgMask);
-       
-               //Get background image
-               bg_model->getBackgroundImage(bgImg);
 
-                // Show the results
-               imshow("foreground mask", fgMask);
-               imshow("foreground image", fgImg);
+        // create black foreground image
+        fgImg = Scalar::all(0);
+
+        // Copy source image to foreground image only in area with white mask
+        croppedImage.copyTo(fgImg, fgMask);
+
+        //Get background image
+        bg_model->getBackgroundImage(bgImg);
+
+        // Show the results
+        imshow("foreground mask", fgMask);
+        imshow("foreground image", fgImg);
+
+        Mat Temp, img;
+		fgMask.convertTo(Temp, CV_8UC1);
+		bilateralFilter(Temp, img, 5, 20, 20);
+		vector<vector<Point> > contours;
+		vector<Vec4i> hier;
+    	cv::findContours(Temp, contours,CV_RETR_EXTERNAL,CV_CHAIN_APPROX_SIMPLE);
+    	cv::Mat contourImage(Temp.size(), CV_8UC3, cv::Scalar(0,0,0));
+    	for (size_t idx = 0; idx < contours.size(); idx++) {
+			cv::drawContours(contourImage, contours, idx, Scalar(255, 255, 255), 2, 8, hier);
+
+			//Rect box = boundingRect(contours[idx]); 
+			//rectangle(resized, box, Scalar(0,255,0));
+		}
+
+        //convex hull
+        double largest_area = 0.0;
+        int largest_contour_index = 0;
+
+		if (!contours.empty())
+        {
+            // Find largest contour
+            for (size_t i = 0; i < contours.size(); i++)
+            {
+                double a = contourArea(contours[i], false);
+                if (a > largest_area)
+                {
+                    largest_area = a;
+                    largest_contour_index = i;
+                }
+            }
+
+            // Draw largest contors
+            Mat3b contour(fgMask.rows, fgMask.cols, Vec3b(0, 0, 0));
+            drawContours(contour, contours, largest_contour_index, Scalar(255, 255, 255), CV_FILLED);
+
+            // Find convex hull of largest contour
+            vector<Point>hull;
+            convexHull(contours[largest_contour_index], hull, CV_CLOCKWISE, true);
+
+            // Draw the convex hull
+            vector<vector<Point> > tmp;
+            tmp.push_back(hull);
+            drawContours(contour, tmp, 0, Scalar(0, 0, 255), 3);
+
+            imshow("Contour", contour);
+        }
 
 		//print output
 		imshow("Kamera", resized);
-		imshow("TH", thresholdFrame);
+		//imshow("TH", thresholdFrame);
+    	//imshow("Contour", contourImage);
 
 		//pause for 33ms
 		waitKey(33);
