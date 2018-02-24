@@ -80,7 +80,7 @@ int main(int argc, const char** argv)
 
         Mat coba, coba2;
         erode(fgMask,coba, 0, Point(-1, -1), 2, 1, 1);
-        dilate(coba,coba2, 0, Point(-1, -1), 2, 1, 1);
+        dilate(coba,coba2, 0, Point(-1, -1), 10, 1, 1);
 
 
         //Get background image
@@ -152,13 +152,13 @@ int main(int argc, const char** argv)
 
         if (largest_area>100){
             drawContours(contour, hull, largest_contour_index, Scalar(255, 0, 255), 3, 8, vector<Vec4i>(), 0, Point());
-
+            int count=0;
             /// Draw convexityDefects
             for(int j=0; j<defects[largest_contour_index].size(); ++j)
             {
                 const Vec4i& v = defects[largest_contour_index][j];
                 float depth = v[3] / 256;
-                int count=0;
+                
                 if (depth > 10 && depth < 100) //  filter defects by depth
                 {
                     int startidx = v[0]; Point ptStart(contours[largest_contour_index][startidx]);
@@ -171,8 +171,8 @@ int main(int argc, const char** argv)
                     circle(contour, ptFar, 4, Scalar(0, 0, 255), 2);
                     count++;
                 }
-                printf("ada %d jari \n", count);
             }
+            printf("ada %d jari \n", count);
         }
 
             imshow("Contour", contour);
